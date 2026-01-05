@@ -10,20 +10,25 @@ from buscador import BuscadorVibe
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vibe_gold_nexus_2026'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# Ajuste de ping para evitar desconexiones en la nube
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 buscador = BuscadorVibe()
 
 COLORES_JUGADORES = ["#00ffcc", "#ff00ff", "#ffff00", "#ff3300", "#0066ff", "#99ff00", "#cc00ff"]
 
-def get_local_ip():
+def get_server_url():
+    # Si Render detecta la variable RENDER, usamos el nombre del host externo
+    if os.environ.get('RENDER'):
+        # Sustituye 'vibe-game' por el nombre que le des a tu servicio en Render
+        return f"{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}"
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
+        return f"{ip}:5000"
     except:
-        return "127.0.0.1"
+        return "127.0.0.1:5000"
 
 # Estado global del juego
 juego = {
@@ -31,25 +36,24 @@ juego = {
     "config": {"modo": "Multijugador", "decadas": [], "solo_espanol": False, "num_canciones": 10},
     "lista_partida": [],
     "indice_actual": 0,
-    "ip_local": get_local_ip(),
+    "server_url": get_server_url(),
     "quien_lo_sabe": "BLOQUEADO"
 }
 
 def emitir_jugadores():
     socketio.emit('update_players', juego["jugadores"])
 
-
 @app.route('/')
 def index():
-    return render_template('index.html', ip=juego["ip_local"], auto_login=False)
+    return render_template('index.html', ip=juego["server_url"], auto_login=False)
 
 @app.route('/unirse')
 def unirse_directo():
-    return render_template('index.html', ip=juego["ip_local"], auto_login=True)
+    return render_template('index.html', ip=juego["server_url"], auto_login=True)
 
 @app.route('/host')
 def host():
-    return render_template('host.html', ip=juego["ip_local"])
+    return render_template('host.html', ip=juego["server_url"])
 
 @app.route('/clasico')
 def clasico():
@@ -80,18 +84,15 @@ def on_join(data):
             "ip": user_ip
         }
     
-    print(f"[CONEXIÓN] Jugador {nombre} unido desde {user_ip}")
     emit('player_config', {"color": juego["jugadores"][sid]["color"]}, room=sid)
     emitir_jugadores()
     socketio.emit('desbloquear_config')
 
 @socketio.on('pre_configurar')
 def pre_configurar(data):
-    print(f"[CONFIG] Iniciando carga. Decadas: {data.get('decadas')} | Canciones: {data.get('num_canciones')}")
     juego["config"].update(data)
     juego["lista_partida"] = []
     juego["indice_actual"] = 0
-    
     socketio.emit('inicio_carga_masiva', {"total": int(juego["config"]["num_canciones"])})
     socketio.start_background_task(preparar_lote_completo)
 
@@ -122,31 +123,22 @@ def preparar_lote_completo():
                     item = random.choice(biblioteca[clave])
                     artista = item['artista'] if isinstance(item, dict) else item
                     fija = item.get('cancion') if isinstance(item, dict) else None
-                    
                     datos = await buscador.obtener_datos_cancion(session, artista, fija, clave.split('_')[0])
-                    
                     if datos and datos.get('preview_url'):
                         juego["lista_partida"].append(datos)
-                        print(f"[CARGA] {len(juego['lista_partida'])}/{objetivo}: {datos['artista']} - {datos['cancion']}")
-                        socketio.emit('progreso_carga', {
-                            "count": len(juego["lista_partida"]), 
-                            "total": objetivo
-                        })
+                        socketio.emit('progreso_carga', {"count": len(juego["lista_partida"]), "total": objetivo})
                         socketio.sleep(0.01)
 
         loop.run_until_complete(descargar())
-        print("[CARGA] Completada. Enviando primera canción...")
         enviar_cancion_actual()
     except Exception as e:
-        print(f"[ERROR] En carga masiva: {e}")
+        print(f"Error carga: {e}")
 
 def enviar_cancion_actual():
     juego["quien_lo_sabe"] = "BLOQUEADO"
     idx = juego["indice_actual"]
-    
     if idx < len(juego["lista_partida"]):
         datos = juego["lista_partida"][idx]
-        print(f"[JUEGO] Enviando Ronda {idx + 1}: {datos['cancion']}")
         socketio.emit('cambio_estado', {"estado": "listo"})
         socketio.sleep(0.5)
         socketio.emit('play_song', {
@@ -154,8 +146,6 @@ def enviar_cancion_actual():
             "datos": datos, 
             "quedan": len(juego["lista_partida"]) - idx
         })
-    else:
-        print("[JUEGO] Error de índice fuera de rango.")
 
 @socketio.on('musica_on')
 def musica_on():
@@ -168,7 +158,6 @@ def lo_se_pulsado():
         juego["quien_lo_sabe"] = request.sid
         jugador = juego["jugadores"].get(request.sid)
         if jugador:
-            print(f"[PULSADOR] {jugador['nombre']} lo sabe.")
             socketio.emit('jugador_lo_sabe', {
                 "nombre": jugador["nombre"], 
                 "color": jugador["color"], 
@@ -181,10 +170,8 @@ def revelar_solucion():
     if idx < len(juego["lista_partida"]):
         d = juego["lista_partida"][idx]
         socketio.emit('mostrar_info_movil', {
-            "artista": d['artista'], 
-            "cancion": d['cancion'], 
-            "portada": d['portada'], 
-            "anyo": d.get('anyo', 'N/A')
+            "artista": d['artista'], "cancion": d['cancion'], 
+            "portada": d['portada'], "anyo": d.get('anyo', 'N/A')
         })
 
 @socketio.on('validar_v35')
@@ -194,9 +181,7 @@ def manejar_validacion(data):
         j = juego["jugadores"][sid]
         puntos_asignados = int(data.get('puntos', 0))
         j["puntos"] += puntos_asignados
-        if data.get('corona'):
-            j["coronas"] += 1
-        
+        if data.get('corona'): j["coronas"] += 1
         emitir_jugadores()
         socketio.emit('animar_puntuacion', {
             "puntos_ronda": puntos_asignados, 
@@ -207,21 +192,11 @@ def manejar_validacion(data):
 @socketio.on('nueva_ronda')
 def nueva_ronda():
     juego["indice_actual"] += 1
-    total = len(juego["lista_partida"])
-    idx = juego["indice_actual"]
-    
-    print(f"[JUEGO] Solicitada nueva ronda. Índice: {idx} / Total: {total}")
-
-    if idx >= total:
-        print("[FIN] Se han acabado las canciones.")
-        # Aquí estaba el error: Si no había jugadores (modo clásico), no se enviaba el final.
+    if juego["indice_actual"] >= len(juego["lista_partida"]):
         if juego["jugadores"]:
             lista_final = sorted(juego["jugadores"].values(), key=lambda x: (x['puntos'], x['coronas']), reverse=True)
-            ganador = lista_final[0]
-            socketio.emit('final_partida', {"ganador": ganador})
+            socketio.emit('final_partida', {"ganador": lista_final[0]})
         else:
-            # CORRECCIÓN PARA CLÁSICO
-            print("[FIN] Modo Clásico (sin jugadores registrados). Enviando señal de fin.")
             socketio.emit('final_partida', {"ganador": {"nombre": "Clásico", "color": "#00ffcc", "puntos": 0}})
     else:
         socketio.emit('cambio_estado', {"estado": "preparate"})
@@ -230,7 +205,6 @@ def nueva_ronda():
 
 @socketio.on('reset_total')
 def reset_total():
-    print("[RESET] Reiniciando partida...")
     for sid in juego["jugadores"]:
         juego["jugadores"][sid]["puntos"] = 0
         juego["jugadores"][sid]["coronas"] = 0
@@ -239,5 +213,6 @@ def reset_total():
     emitir_jugadores()
 
 if __name__ == '__main__':
-    print(f"--- VIBE SERVER INICIADO EN {get_local_ip()}:5000 ---")
-    socketio.run(app, host='0.0.0.0', port=5000)
+    # CAMBIO CRÍTICO PARA RENDER:
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
