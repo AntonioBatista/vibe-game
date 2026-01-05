@@ -10,17 +10,18 @@ from buscador import BuscadorVibe
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vibe_gold_nexus_2026'
-# Ajuste de ping para evitar desconexiones en la nube
+# Ajuste para estabilidad en Render
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 buscador = BuscadorVibe()
 
 COLORES_JUGADORES = ["#00ffcc", "#ff00ff", "#ffff00", "#ff3300", "#0066ff", "#99ff00", "#cc00ff"]
 
 def get_server_url():
-    # Si Render detecta la variable RENDER, usamos el nombre del host externo
+    # En Render, usamos el hostname externo sin añadir el puerto 5000
     if os.environ.get('RENDER'):
-        # Sustituye 'vibe-game' por el nombre que le des a tu servicio en Render
-        return f"{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}"
+        return os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    
+    # En local, detectamos la IP y mantenemos el puerto 5000
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -179,6 +180,7 @@ def manejar_validacion(data):
     sid = data.get('sid')
     if sid in juego["jugadores"]:
         j = juego["jugadores"][sid]
+        # + puntos por correcta, -1 por incorrecta según instrucciones previas
         puntos_asignados = int(data.get('puntos', 0))
         j["puntos"] += puntos_asignados
         if data.get('corona'): j["coronas"] += 1
@@ -213,6 +215,6 @@ def reset_total():
     emitir_jugadores()
 
 if __name__ == '__main__':
-    # CAMBIO CRÍTICO PARA RENDER:
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
+
