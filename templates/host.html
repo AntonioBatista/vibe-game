@@ -29,19 +29,17 @@
 
     <div class="loading-bar"><div id="progress"></div></div>
 
-    <div id="view-intro" class="panel">
-        <div style="margin: auto;">
-            <h1 style="font-size: 5em; color: var(--cyan); letter-spacing: 10px; margin-bottom: 10px;">VIBE</h1>
-            <div style="background:white; padding:15px; border-radius:20px; margin: 20px; display: inline-block; box-shadow: 0 0 30px rgba(0,255,204,0.4);">
-                <img id="qr-img" src="" width="220">
-            </div>
-            <p style="font-size: 1.5em; color: var(--cyan); font-family: monospace; letter-spacing: 2px;">
-                <span id="url-display">CARGANDO...</span>
-            </p>
-            <div id="players-list" style="display:flex; justify-content: center; gap:15px; font-weight: bold; min-height: 50px; margin-top: 20px;"></div>
-            <button id="btn-to-config" class="hidden btn-host" onclick="irA('config')" style="margin-top:30px;">CONFIGURAR PARTIDA</button>
+   <div id="view-intro" class="panel">
+    <div style="margin: auto;">
+        <h1 style="font-size: 5em; color: var(--cyan); letter-spacing: 10px;">VIBE</h1>
+        <div style="background:white; padding:15px; border-radius:20px; margin: 20px; display: inline-block;">
+            <img id="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ base_url }}/unirse" width="220">
         </div>
+        <p style="font-size: 1.2em; color: var(--cyan); font-family: monospace;">{{ base_url }}</p>
+        <div id="players-list" style="display:flex; justify-content: center; gap:15px; font-weight: bold;"></div>
+        <button id="btn-to-config" class="hidden btn-host" onclick="irA('config')" style="margin-top:30px;">CONFIGURAR PARTIDA</button>
     </div>
+</div>
 
     <div id="view-config" class="panel hidden">
         <div style="background: #111; padding: 40px; border-radius: 30px; border: 1px solid #333; width: 400px;">
@@ -188,4 +186,5 @@
     </script>
 </body>
 </html>
+
 
