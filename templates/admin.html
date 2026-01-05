@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>VIBE Admin - Gestor de Biblioteca</title>
+    <style>
+        body { background: #050505; color: white; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; margin-bottom: 20px; }
+        select, input, button { padding: 10px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; }
+        button { background: #00ffcc; color: black; font-weight: bold; cursor: pointer; border: none; }
+        .list { max-height: 300px; overflow-y: auto; background: #000; padding: 10px; border-radius: 10px; margin-top: 10px; }
+        .item { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #111; font-size: 0.9em; }
+        .del-btn { background: #ff3300; color: white; padding: 2px 8px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VIBE ADMIN 🎶</h1>
+        <div class="card">
+            <h3>Añadir Nueva Canción</h3>
+            <select id="sel-decada">
+                <option value="60s_es">60s ES</option><option value="60s_int">60s INT</option>
+                <option value="70s_es">70s ES</option><option value="70s_int">70s INT</option>
+                <option value="80s_es">80s ES</option><option value="80s_int">80s INT</option>
+                <option value="90s_es">90s ES</option><option value="90s_int">90s INT</option>
+                <option value="00s_es">00s ES</option><option value="00s_int">00s INT</option>
+                <option value="10s_es">10s ES</option><option value="10s_int">10s INT</option>
+                <option value="20s_es">20s ES</option><option value="20s_int">20s INT</option>
+            </select>
+            <input type="text" id="in-artista" placeholder="Artista">
+            <input type="text" id="in-cancion" placeholder="Canción (Opcional)">
+            <button onclick="agregar()">AÑADIR</button>
+        </div>
+
+        <div id="listas-container"></div>
+        <button onclick="guardarTodo()" style="width: 100%; font-size: 1.2em; margin-top: 20px;">GUARDAR CAMBIOS EN JSON</button>
+    </div>
+
+    <script>
+        let biblioteca = {};
+
+        async function cargar() {
+            const res = await fetch('/get_biblioteca');
+            biblioteca = await res.json();
+            render();
+        }
+
+        function render() {
+            const container = document.getElementById('listas-container');
+            container.innerHTML = "";
+            for (let decada in biblioteca) {
+                let div = document.createElement('div');
+                div.className = "card";
+                div.innerHTML = `<h4>${decada} (${biblioteca[decada].length})</h4><div class="list">` + 
+                    biblioteca[decada].map((item, i) => `
+                        <div class="item">
+                            ${typeof item === 'string' ? item : item.artista + ' - ' + item.cancion}
+                            <button class="del-btn" onclick="eliminar('${decada}', ${i})">X</button>
+                        </div>
+                    `).join('') + `</div>`;
+                container.appendChild(div);
+            }
+        }
+
+        function agregar() {
+            const dec = document.getElementById('sel-decada').value;
+            const art = document.getElementById('in-artista').value;
+            const can = document.getElementById('in-cancion').value;
+            if(!art) return;
+            
+            if (!biblioteca[dec]) biblioteca[dec] = [];
+            if(can) biblioteca[dec].push({artista: art, cancion: can});
+            else biblioteca[dec].push(art);
+            
+            render();
+            document.getElementById('in-artista').value = "";
+            document.getElementById('in-cancion').value = "";
+        }
+
+        function eliminar(dec, i) {
+            biblioteca[dec].splice(i, 1);
+            render();
+        }
+
+        async function guardarTodo() {
+            await fetch('/save_biblioteca', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(biblioteca)
+            });
+            alert("¡Biblioteca actualizada!");
+        }
+
+        cargar();
+    </script>
+</body>
+</html>
