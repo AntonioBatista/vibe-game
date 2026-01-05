@@ -10,61 +10,60 @@ from buscador import BuscadorVibe
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vibe_gold_nexus_2026'
-# Optimizamos el socket para evitar desconexiones en la nube
+# Configuración optimizada para Render (evita desconexiones de sockets)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 buscador = BuscadorVibe()
 
 COLORES_JUGADORES = ["#00ffcc", "#ff00ff", "#ffff00", "#ff3300", "#0066ff", "#99ff00", "#cc00ff"]
 
-def get_local_ip():
+def get_server_url():
+    """Detección infalible de URL: Render vs Local"""
+    # 1. Si estamos en Render, usar su URL oficial sin puertos adicionales
+    if os.environ.get('RENDER'):
+        return os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    
+    # 2. Si estamos en local, detectamos la IP de la red y el puerto 5000
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
+        return f"{ip}:5000"
     except:
-        return "127.0.0.1"
+        return "127.0.0.1:5000"
 
-def get_base_url():
-    """Detecta la URL real de acceso para que el QR y los links no fallen"""
-    host = request.host
-    # Si detecta localhost o IP privada, mantiene el protocolo http y puerto
-    if "localhost" in host or "127.0.0.1" in host or "192.168." in host:
-        return f"http://{host}"
-    
-    # En Render, usa https automáticamente
-    protocol = "https" if request.is_secure or "onrender.com" in host else "http"
-    return f"{protocol}://{host}"
-
-# Estado global del juego
+# Estado global del juego (Versión Premium Gold)
 juego = {
     "jugadores": {},
     "config": {"modo": "Multijugador", "decadas": [], "solo_espanol": False, "num_canciones": 10},
     "lista_partida": [],
     "indice_actual": 0,
-    "ip_local": get_local_ip(),
+    "server_url": get_server_url(),
     "quien_lo_sabe": "BLOQUEADO"
 }
 
 def emitir_jugadores():
     socketio.emit('update_players', juego["jugadores"])
 
+# --- RUTAS ---
+
 @app.route('/')
 def index():
-    return render_template('index.html', base_url=get_base_url(), auto_login=False)
+    return render_template('index.html', ip=juego["server_url"], auto_login=False)
 
 @app.route('/unirse')
 def unirse_directo():
-    return render_template('index.html', base_url=get_base_url(), auto_login=True)
+    return render_template('index.html', ip=juego["server_url"], auto_login=True)
 
 @app.route('/host')
 def host():
-    return render_template('host.html', base_url=get_base_url())
+    return render_template('host.html', ip=juego["server_url"])
 
 @app.route('/clasico')
 def clasico():
     return render_template('clasico.html')
+
+# --- EVENTOS SOCKET.IO ---
 
 @socketio.on('join')
 def on_join(data):
@@ -72,6 +71,7 @@ def on_join(data):
     nombre = data.get('nombre', 'Invitado').upper()
     user_ip = request.remote_addr 
     
+    # Registro único por IP para evitar duplicados
     encontrado_sid = None
     for s, info in juego["jugadores"].items():
         if info.get('ip') == user_ip:
@@ -214,5 +214,6 @@ def reset_total():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port)
+
 
 
