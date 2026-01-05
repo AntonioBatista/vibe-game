@@ -10,29 +10,25 @@ from buscador import BuscadorVibe
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vibe_gold_nexus_2026'
-# Configuración optimizada para Render (evita desconexiones de sockets)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 buscador = BuscadorVibe()
 
 COLORES_JUGADORES = ["#00ffcc", "#ff00ff", "#ffff00", "#ff3300", "#0066ff", "#99ff00", "#cc00ff"]
 
 def get_server_url():
-    """Detección infalible de URL: Render vs Local"""
-    # 1. Si estamos en Render, usar su URL oficial sin puertos adicionales
+    """Obtiene SOLO el dominio o la IP, sin puertos"""
     if os.environ.get('RENDER'):
         return os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-    
-    # 2. Si estamos en local, detectamos la IP de la red y el puerto 5000
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return f"{ip}:5000"
+        return ip
     except:
-        return "127.0.0.1:5000"
+        return "127.0.0.1"
 
-# Estado global del juego (Versión Premium Gold)
+# Estado global del juego
 juego = {
     "jugadores": {},
     "config": {"modo": "Multijugador", "decadas": [], "solo_espanol": False, "num_canciones": 10},
@@ -44,8 +40,6 @@ juego = {
 
 def emitir_jugadores():
     socketio.emit('update_players', juego["jugadores"])
-
-# --- RUTAS ---
 
 @app.route('/')
 def index():
@@ -63,31 +57,22 @@ def host():
 def clasico():
     return render_template('clasico.html')
 
-# --- EVENTOS SOCKET.IO ---
-
 @socketio.on('join')
 def on_join(data):
     sid = request.sid
     nombre = data.get('nombre', 'Invitado').upper()
     user_ip = request.remote_addr 
-    
-    # Registro único por IP para evitar duplicados
     encontrado_sid = None
     for s, info in juego["jugadores"].items():
         if info.get('ip') == user_ip:
             encontrado_sid = s
             break
-    
     if encontrado_sid:
         juego["jugadores"][sid] = juego["jugadores"].pop(encontrado_sid)
         juego["jugadores"][sid]["nombre"] = nombre
     else:
         color = COLORES_JUGADORES[len(juego["jugadores"]) % len(COLORES_JUGADORES)]
-        juego["jugadores"][sid] = {
-            "nombre": nombre, "puntos": 0, "coronas": 0, 
-            "color": color, "ip": user_ip
-        }
-    
+        juego["jugadores"][sid] = {"nombre": nombre, "puntos": 0, "coronas": 0, "color": color, "ip": user_ip}
     emit('player_config', {"color": juego["jugadores"][sid]["color"]}, room=sid)
     emitir_jugadores()
     socketio.emit('desbloquear_config')
@@ -104,7 +89,6 @@ def preparar_lote_completo():
     try:
         with open('artistas.json', 'r', encoding='utf-8') as f:
             biblioteca = json.load(f)
-        
         claves = []
         for d in juego["config"]["decadas"]:
             s_es, s_int = f"{d}_es", f"{d}_int"
@@ -113,12 +97,9 @@ def preparar_lote_completo():
             else:
                 if s_es in biblioteca: claves.append(s_es)
                 if s_int in biblioteca: claves.append(s_int)
-        
         if not claves: claves = list(biblioteca.keys())
-
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-
         async def descargar():
             async with aiohttp.ClientSession() as session:
                 objetivo = int(juego["config"]["num_canciones"])
@@ -128,12 +109,10 @@ def preparar_lote_completo():
                     artista = item['artista'] if isinstance(item, dict) else item
                     fija = item.get('cancion') if isinstance(item, dict) else None
                     datos = await buscador.obtener_datos_cancion(session, artista, fija, clave.split('_')[0])
-                    
                     if datos and datos.get('preview_url'):
                         juego["lista_partida"].append(datos)
                         socketio.emit('progreso_carga', {"count": len(juego["lista_partida"]), "total": objetivo})
                         socketio.sleep(0.01)
-
         loop.run_until_complete(descargar())
         enviar_cancion_actual()
     except Exception as e:
@@ -146,10 +125,7 @@ def enviar_cancion_actual():
         datos = juego["lista_partida"][idx]
         socketio.emit('cambio_estado', {"estado": "listo"})
         socketio.sleep(0.5)
-        socketio.emit('play_song', {
-            "preview": datos['preview_url'], "datos": datos, 
-            "quedan": len(juego["lista_partida"]) - idx
-        })
+        socketio.emit('play_song', {"preview": datos['preview_url'], "datos": datos, "quedan": len(juego["lista_partida"]) - idx})
 
 @socketio.on('musica_on')
 def musica_on():
@@ -169,10 +145,7 @@ def revelar_solucion():
     idx = juego["indice_actual"]
     if idx < len(juego["lista_partida"]):
         d = juego["lista_partida"][idx]
-        socketio.emit('mostrar_info_movil', {
-            "artista": d['artista'], "cancion": d['cancion'], 
-            "portada": d['portada'], "anyo": d.get('anyo', 'N/A')
-        })
+        socketio.emit('mostrar_info_movil', {"artista": d['artista'], "cancion": d['cancion'], "portada": d['portada'], "anyo": d.get('anyo', 'N/A')})
 
 @socketio.on('validar_v35')
 def manejar_validacion(data):
@@ -183,10 +156,7 @@ def manejar_validacion(data):
         j["puntos"] += puntos_asignados
         if data.get('corona'): j["coronas"] += 1
         emitir_jugadores()
-        socketio.emit('animar_puntuacion', {
-            "puntos_ronda": puntos_asignados, "total_puntos": j["puntos"], 
-            "es_corona": data.get('corona')
-        }, room=sid)
+        socketio.emit('animar_puntuacion', {"puntos_ronda": puntos_asignados, "total_puntos": j["puntos"], "es_corona": data.get('corona')}, room=sid)
 
 @socketio.on('nueva_ronda')
 def nueva_ronda():
@@ -212,8 +182,5 @@ def reset_total():
     emitir_jugadores()
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
-
-
-
