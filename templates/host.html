@@ -1,286 +1,191 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>VIBE Host - Final Gold</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>VIBE HOST - PREMIUM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        :root { --cyan: #00ffcc; --bg: #050505; --f-rgb: 0, 255, 204; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
-        .panel { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 40px 20px; box-sizing: border-box; text-align: center; }
+        :root { --cyan: #00ffcc; --magenta: #ff00ff; }
+        body { background: #0a0a0a; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; overflow: hidden; margin:0; }
+        .panel { display: flex; flex-direction: column; height: 100vh; justify-content: center; align-items: center; transition: 0.5s; }
         .hidden { display: none !important; }
-
-        /* CD Circular */
-        #disco-box { width: 380px; height: 380px; border-radius: 50%; border: 10px solid #111; overflow: hidden; filter: blur(50px); transition: 0.8s; position: relative; flex-shrink: 0; margin-top: 20px; }
-        .img-host { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
-        .spinning { animation: rotate 12s linear infinite; }
+        .btn-host { background: none; border: 2px solid var(--cyan); color: var(--cyan); padding: 15px 40px; font-size: 1.2em; cursor: pointer; border-radius: 50px; transition: 0.3s; }
+        .btn-host:hover { background: var(--cyan); color: black; box-shadow: 0 0 20px var(--cyan); }
+        #game-screen { background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
+        .artista-text { font-size: 4em; font-weight: 900; text-transform: uppercase; margin: 10px 0; }
+        .cancion-text { font-size: 2em; color: var(--cyan); opacity: 0.8; }
+        #disco { width: 350px; height: 350px; border-radius: 50%; border: 10px solid #222; box-shadow: 0 0 50px rgba(0,0,0,0.8); margin-bottom: 20px; }
+        .rotating { animation: rotate 3s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        #track-counter { color: var(--cyan); font-weight: 900; font-size: 1.5em; letter-spacing: 2px; margin-bottom: 10px; }
-        .btn-play-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 85px; height: 85px; background: var(--cyan); border-radius: 50%; border: none; z-index: 1000; cursor: pointer; box-shadow: 0 0 30px var(--cyan); display: flex; align-items: center; justify-content: center; }
-
-        /* Flash */
-        #flash-total { position: fixed; inset: 0; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-        .flash-active { background: rgba(var(--f-rgb), 0.85); backdrop-filter: blur(25px); color: black; }
-        
-        /* Panel de Validación Flotante */
-        #panel-validacion { 
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            z-index: 6000; background: rgba(0,0,0,0.9); 
-            padding: 20px 40px; border-radius: 50px; 
-            border: 2px solid var(--cyan); text-align: center; pointer-events: auto;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-        }
-
-        /* Sidebar y Píldoras (MEJORADO) */
-        .score-sidebar { position: fixed; right: 25px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 2000; }
-        
-        .capsule { 
-            background: rgba(255,255,255,0.05); 
-            padding: 12px 20px; 
-            border-radius: 50px 15px 15px 50px; 
-            border-left: 6px solid var(--c); 
-            min-width: 200px; 
-            backdrop-filter: blur(5px);
-            
-            /* Lógica Flex para separar nombre y puntos */
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            font-weight: 600;
-        }
-
-        /* Estilo para los textos dentro de la cápsula */
-        .capsule span { text-align: left; text-transform: uppercase; letter-spacing: 1px; }
-        .capsule b { text-align: right; color: var(--cyan); font-size: 1.1em; }
-
-        /* Otros */
-        .music-links { display: flex; gap: 30px; justify-content: center; margin: 25px 0; }
-        .music-btn { font-size: 3em; transition: 0.3s; text-decoration: none; }
-        .music-btn:hover { transform: scale(1.2); }
-        .sp-color { color: #1DB954; } .it-color { color: #FA243C; } 
-        .config-box { background: #111; padding: 30px; border-radius: 30px; border: 2px solid #222; width: 520px; margin-top: auto; margin-bottom: auto; }
-        #eras-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
-        .btn-vibe-toggle { padding: 12px; border: 2px solid #333; background: #1a1a1a; color: white; border-radius: 12px; cursor: pointer; font-weight: bold; }
-        .btn-vibe-toggle.active { border-color: var(--cyan); background: rgba(0, 255, 204, 0.2); }
-        .btn-host { background: var(--cyan); color: black; padding: 16px 45px; border-radius: 50px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; margin: 10px; }
+        .btn-era { background: #222; border: 1px solid #444; color: white; padding: 10px; cursor: pointer; border-radius: 10px; }
+        .btn-era.active { background: var(--cyan); color: black; border-color: var(--cyan); font-weight: bold; }
+        #eras-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .loading-bar { width: 100%; height: 5px; background: #222; position: fixed; top: 0; left: 0; }
+        #progress { width: 0%; height: 100%; background: var(--cyan); transition: 0.3s; }
     </style>
 </head>
 <body>
-    <audio id="audio-player" onplay="setPlaying(true)" onpause="setPlaying(false)"></audio>
-    <audio id="audio-buzzer" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
 
-    <div id="flash-total" class="hidden">
-        <h1 id="txt-pulsado" style="font-size: 6em; margin: 0; text-transform: uppercase;"></h1>
-        <div id="timer-display" style="font-size: 8em; font-weight: 900;">10</div>
-        <button id="btn-revelar-flash" class="btn-host" style="margin-top:20px; pointer-events: auto;" onclick="revelar()">REVELAR SOLUCIÓN</button>
-    </div>
-
-    <div id="panel-validacion" class="hidden">
-        <h3 style="color:white; margin:0 0 10px 0;">ASIGNAR PUNTOS</h3>
-        <button class="btn-host" style="background:#ffd700;" onclick="voto(3, true)">👑 PLENO</button>
-        <button class="btn-host" onclick="voto(1, false)">ACERTÓ</button>
-        <button class="btn-host" style="background:#ff3300; color:white;" onclick="voto(-1, false)">FALLÓ</button>
-    </div>
-
-    <div id="sidebar" class="score-sidebar"></div>
+    <div class="loading-bar"><div id="progress"></div></div>
 
     <div id="view-intro" class="panel">
-    <div style="margin: auto;">
-        <h1 style="font-size: 5em; color: var(--cyan); letter-spacing: 10px;">VIBE</h1>
-        <div style="background:white; padding:15px; border-radius:20px; margin: 20px; display: inline-block;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://{{ ip }}/unirse" width="220">
+        <div style="margin: auto;">
+            <h1 style="font-size: 5em; color: var(--cyan); letter-spacing: 10px; margin-bottom: 10px;">VIBE</h1>
+            <div style="background:white; padding:15px; border-radius:20px; margin: 20px; display: inline-block; box-shadow: 0 0 30px rgba(0,255,204,0.4);">
+                <img id="qr-img" src="" width="220">
+            </div>
+            <p style="font-size: 1.5em; color: var(--cyan); font-family: monospace; letter-spacing: 2px;">
+                <span id="url-display">CARGANDO...</span>
+            </p>
+            <div id="players-list" style="display:flex; justify-content: center; gap:15px; font-weight: bold; min-height: 50px; margin-top: 20px;"></div>
+            <button id="btn-to-config" class="hidden btn-host" onclick="irA('config')" style="margin-top:30px;">CONFIGURAR PARTIDA</button>
         </div>
-        <p style="font-size: 1.2em; color: var(--cyan);">https://{{ ip }}</p>
-        <div id="players-list" style="display:flex; justify-content: center; gap:15px; font-weight: bold;"></div>
-        <button id="btn-to-config" class="hidden btn-host" onclick="irA('config')" style="margin-top:30px;">CONFIGURAR PARTIDA</button>
     </div>
-</div>
 
     <div id="view-config" class="panel hidden">
-        <div class="config-box">
-            <h3>DÉCADAS</h3>
+        <div style="background: #111; padding: 40px; border-radius: 30px; border: 1px solid #333; width: 400px;">
+            <h2 style="color:var(--cyan)">DÉCADAS</h2>
             <div id="eras-grid">
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">60s</button>
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">70s</button>
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">80s</button>
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">90s</button>
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">00s</button>
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">10s</button>
-                <button class="btn-vibe-toggle active" onclick="this.classList.toggle('active')">20s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">60s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">70s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">80s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">90s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">00s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">10s</button>
+                <button class="btn-era active" onclick="this.classList.toggle('active')">20s</button>
             </div>
-            <label style="font-weight:bold;">CANCIONES: <span id="val-num" style="color:var(--cyan)">10</span></label>
-            <input type="range" id="slider-songs" min="5" max="35" value="10" oninput="document.getElementById('val-num').innerText=this.value" style="width:100%; margin:20px 0; accent-color: var(--cyan);">
-            <button class="btn-vibe-toggle" id="btn-es" style="width:100%; margin-bottom:20px;" onclick="this.classList.toggle('active')">SOLO ESPAÑOL 🇪🇸</button>
-            <button class="btn-host" style="width:100%" onclick="lanzarCarga()">¡EMPEZAR VIBE!</button>
+            <div style="margin: 20px 0;">
+                <label>SOLO ESPAÑOL <input type="checkbox" id="check-es"></label>
+            </div>
+            <div style="margin: 20px 0;">
+                <label>CANCIONES: <b id="val-num" style="color:var(--cyan)">10</b></label><br>
+                <input type="range" id="slider-songs" min="5" max="30" value="10" oninput="document.getElementById('val-num').innerText=this.value" style="width:100%; margin-top:10px;">
+            </div>
+            <button class="btn-host" onclick="empezarPartida()">EMPEZAR</button>
         </div>
     </div>
 
     <div id="view-game" class="panel hidden">
-        <div id="track-counter" style="margin-top:20px;">CANCIONES: --</div>
-        <div style="position:relative; flex-shrink: 0;">
-            <div id="disco-box"><img id="img-host" class="img-host"></div>
-            <button class="btn-play-circle" onclick="togglePlay()">
-                <svg id="svg-icon" viewBox="0 0 24 24" width="40" height="40" fill="black">
-                    <path id="path-icon" d="M8 5v14l11-7z"/>
-                </svg>
-            </button>
+        <div id="status-msg" style="font-size: 2em; color: var(--cyan); margin-bottom: 20px;">PREPÁRATE...</div>
+        <div id="disco-container" class="hidden">
+            <img id="disco" src="{{ url_for('static', filename='disco.png') }}" class="rotating">
+            <div id="player-indicator" style="font-size: 3em; font-weight: 900; margin-top: 20px;"></div>
         </div>
-        
-        <div id="info-res" class="hidden" style="margin-top:30px; text-align:center; width: 100%; max-width: 600px;">
-            <h1 id="h-artista" style="color:var(--cyan); font-size:3.5em; margin:0; text-transform: uppercase; word-wrap: break-word;"></h1>
-            <h2 id="h-titulo" style="font-weight:300; font-size: 2em; margin:5px 0; opacity: 0.8; word-wrap: break-word;"></h2>
-            <h3 id="h-anyo" style="color:var(--cyan); font-weight:900; font-size: 2em; margin: 10px 0;"></h3>
-            <div class="music-links">
-                <a id="link-spotify" class="music-btn sp-color" target="_blank" title="Spotify"><i class="fab fa-spotify"></i></a>
-                <a id="link-itunes" class="music-btn it-color" target="_blank" title="Apple Music"><i class="fab fa-apple"></i></a>
-            </div>
-            <button id="btn-next-song" class="btn-host hidden" onclick="socket.emit('nueva_ronda')">SIGUIENTE CANCIÓN</button>
-        </div>
-        <button id="btn-revelar-host" class="btn-host" style="margin-top:40px; background:none; border:2px solid var(--cyan); color:var(--cyan);" onclick="revelar()">REVELAR</button>
-    </div>
-
-    <div id="view-finish" class="panel hidden">
-        <h1 style="font-size: 5em; color: var(--cyan); letter-spacing: 10px;">🏆 GANADOR</h1>
-        <div id="winner-box" style="margin: 40px 0; transform: scale(1.5);"></div>
-        <div style="margin-top: 50px;">
-            <button class="btn-host" onclick="socket.emit('reset_total'); irA('config');">NUEVA PARTIDA</button>
-            <button class="btn-host" style="background:white;" onclick="irA('config')">CONTINUAR</button>
+        <div id="info-res" class="hidden">
+            <img id="res-portada" style="width:300px; border-radius:20px; box-shadow: 0 0 30px rgba(0,0,0,0.5);">
+            <div class="artista-text" id="res-artista"></div>
+            <div class="cancion-text" id="res-cancion"></div>
+            <div id="res-anyo" style="font-size: 1.5em; color: #666; margin-top: 10px;"></div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <div id="view-winner" class="panel hidden">
+        <h1 style="font-size: 4em; color: var(--cyan);">¡FIN DE PARTIDA!</h1>
+        <div id="winner-card" style="padding: 40px; border-radius: 30px; margin: 20px;">
+            <h2 id="winner-name" style="font-size: 5em; margin: 0;"></h2>
+            <p id="winner-points" style="font-size: 2em;"></p>
+        </div>
+        <button class="btn-host" onclick="location.reload()">NUEVA PARTIDA</button>
+    </div>
+
+    <audio id="audio-player"></audio>
+
     <script>
         const socket = io();
-        const player = document.getElementById('audio-player');
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let ultimoPulsador = null;
+        const rawIp = "{{ ip }}";
+        
+        // Configuración de URL y QR dinámica para Render/Local
+        const protocol = rawIp.includes(':') ? 'http://' : 'https://';
+        const fullUrl = protocol + rawIp + '/unirse';
+        document.getElementById('qr-img').src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(fullUrl);
+        document.getElementById('url-display').innerText = (protocol + rawIp).toUpperCase();
 
-        const ICON_PLAY = "M8 5v14l11-7z";
-        const ICON_PAUSE = "M6 19h4V5H6v14zm8-14v14h4V5h-4z";
-
-        function hexToRgbComma(hex) {
-            hex = hex.replace(/^#/, '');
-            let bigint = parseInt(hex, 16);
-            let r = (bigint >> 16) & 255;
-            let g = (bigint >> 8) & 255;
-            let b = bigint & 255;
-            return `${r}, ${g}, ${b}`;
+        function irA(view) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById('view-' + view).classList.remove('hidden');
         }
 
-        function irA(v) { document.querySelectorAll('.panel').forEach(p=>p.classList.add('hidden')); document.getElementById('view-'+v).classList.remove('hidden'); window.scrollTo(0,0); }
-
-        function setPlaying(playing) {
-            const path = document.getElementById('path-icon');
-            const disco = document.getElementById('disco-box');
-            if(playing) {
-                path.setAttribute('d', ICON_PAUSE);
-                disco.classList.add('spinning');
-            } else {
-                path.setAttribute('d', ICON_PLAY);
-                disco.classList.remove('spinning');
+        socket.on('update_players', (jugadores) => {
+            const list = document.getElementById('players-list');
+            list.innerHTML = '';
+            let count = 0;
+            for (let id in jugadores) {
+                count++;
+                const p = jugadores[id];
+                list.innerHTML += `<div style="color:${p.color}; border-bottom: 3px solid ${p.color}; padding: 5px 15px;">${p.nombre} [${p.puntos}]</div>`;
             }
-        }
-
-        function togglePlay() {
-            if(player.paused) { player.play(); socket.emit('musica_on'); } 
-            else { player.pause(); }
-        }
-
-        socket.on('update_players', js => {
-            const lista = Object.values(js);
-            document.getElementById('players-list').innerHTML = lista.map(j=>`<div style="color:${j.color}">${j.nombre}</div>`).join('');
-            
-            // CAMBIO: Generación con spans separados para usar Flexbox (Nombre izquierda, Puntos derecha)
-            document.getElementById('sidebar').innerHTML = lista.sort((a,b)=>b.puntos-a.puntos).map(j=>`
-                <div class="capsule" style="--c:${j.color}">
-                    <span>${j.nombre}</span>
-                    <b>${j.puntos} 👑${j.coronas}</b>
-                </div>`).join('');
+            if (count >= 1) document.getElementById('btn-to-config').classList.remove('hidden');
         });
 
-        socket.on('desbloquear_config', () => document.getElementById('btn-to-config').classList.remove('hidden'));
-
-        function lanzarCarga() {
-            const eras = Array.from(document.querySelectorAll('.btn-vibe-toggle.active')).map(b=>b.innerText);
-            socket.emit('pre_configurar', { 
-                decadas: eras, 
-                num_canciones: document.getElementById('slider-songs').value,
-                solo_espanol: document.getElementById('btn-es').classList.contains('active')
+        function empezarPartida() {
+            const decadas = Array.from(document.querySelectorAll('.btn-era.active')).map(b => b.innerText.replace('s',''));
+            if (decadas.length === 0) { alert("Selecciona al menos una década"); return; }
+            
+            socket.emit('pre_configurar', {
+                decadas: decadas,
+                solo_espanol: document.getElementById('check-es').checked,
+                num_canciones: document.getElementById('slider-songs').value
             });
             irA('game');
         }
 
-        socket.on('play_song', d => {
+        socket.on('progreso_carga', (data) => {
+            const p = (data.count / data.total) * 100;
+            document.getElementById('progress').style.width = p + '%';
+            document.getElementById('status-msg').innerText = `CARGANDO BIBLIOTECA... ${data.count}/${data.total}`;
+        });
+
+        socket.on('play_song', (data) => {
             irA('game');
-            document.getElementById('disco-box').style.filter = "blur(50px)";
-            document.getElementById('img-host').src = d.datos.portada;
-            document.getElementById('h-artista').innerText = d.datos.artista;
-            document.getElementById('h-titulo').innerText = d.datos.cancion;
-            document.getElementById('h-anyo').innerText = d.datos.anyo || "";
-            document.getElementById('link-spotify').href = d.datos.spotify_url || "#";
-            document.getElementById('link-itunes').href = d.datos.apple_music_url || "#";
-            document.getElementById('track-counter').innerText = "RESTANTES: " + d.quedan;
-            player.src = d.preview; player.pause();
-            
-            setPlaying(false);
-
+            document.getElementById('progress').style.width = '0%';
+            document.getElementById('status-msg').innerText = "ESCUCHA CON ATENCIÓN...";
+            document.getElementById('disco-container').classList.remove('hidden');
             document.getElementById('info-res').classList.add('hidden');
-            document.getElementById('btn-revelar-host').classList.remove('hidden');
-            document.getElementById('btn-next-song').classList.add('hidden');
-            document.getElementById('panel-validacion').classList.add('hidden');
+            document.getElementById('player-indicator').innerText = '';
+            
+            const audio = document.getElementById('audio-player');
+            audio.src = data.preview;
+            audio.play().then(() => {
+                socket.emit('musica_on');
+            });
         });
 
-        socket.on('jugador_lo_sabe', d => {
-            ultimoPulsador = d.sid;
-            player.pause(); document.getElementById('audio-buzzer').play();
-            const flash = document.getElementById('flash-total');
-            if(d.color) flash.style.setProperty('--f-rgb', hexToRgbComma(d.color));
-            flash.classList.remove('hidden'); flash.classList.add('flash-active');
-            document.getElementById('txt-pulsado').innerText = d.nombre;
-            document.getElementById('btn-revelar-flash').classList.remove('hidden');
-
-            let t = 10;
-            clearInterval(window.hTimer);
-            window.hTimer = setInterval(() => {
-                document.getElementById('timer-display').innerText = t;
-                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                o.type='square'; o.connect(g); g.connect(audioCtx.destination);
-                o.frequency.value = (t <= 3 && t > 0) ? 650 : 440; 
-                g.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.1);
-                o.start(); o.stop(audioCtx.currentTime+0.1);
-                t--; if(t<0) clearInterval(window.hTimer);
-            }, 1000);
+        socket.on('jugador_lo_sabe', (data) => {
+            document.getElementById('audio-player').pause();
+            document.getElementById('status-msg').innerText = "¡ALGUIEN LO SABE!";
+            const ind = document.getElementById('player-indicator');
+            ind.innerText = data.nombre;
+            ind.style.color = data.color;
         });
 
-        function revelar() {
-            clearInterval(window.hTimer);
-            document.getElementById('flash-total').classList.add('hidden');
-            document.getElementById('btn-revelar-flash').classList.add('hidden');
-            document.getElementById('disco-box').style.filter = "none";
+        socket.on('mostrar_info_movil', (data) => {
+            document.getElementById('disco-container').classList.add('hidden');
             document.getElementById('info-res').classList.remove('hidden');
-            document.getElementById('btn-revelar-host').classList.add('hidden');
-            player.play();
-            document.getElementById('panel-validacion').classList.remove('hidden');
-            socket.emit('revelar_solucion');
-        }
+            document.getElementById('res-portada').src = data.portada;
+            document.getElementById('res-artista').innerText = data.artista;
+            document.getElementById('res-cancion').innerText = data.cancion;
+            document.getElementById('res-anyo').innerText = data.anyo;
+            document.getElementById('status-msg').innerText = "SOLUCIÓN";
+        });
 
-        function voto(pts, corona) {
-            socket.emit('validar_v35', { sid: ultimoPulsador, puntos: pts, corona: corona });
-            document.getElementById('panel-validacion').classList.add('hidden');
-            document.getElementById('btn-next-song').classList.remove('hidden');
-        }
+        socket.on('final_partida', (data) => {
+            irA('winner');
+            const card = document.getElementById('winner-card');
+            card.style.border = `5px solid ${data.ganador.color}`;
+            card.style.boxShadow = `0 0 50px ${data.ganador.color}`;
+            document.getElementById('winner-name').innerText = data.ganador.nombre;
+            document.getElementById('winner-name').style.color = data.ganador.color;
+            document.getElementById('winner-points').innerText = `${data.ganador.puntos} PUNTOS`;
+        });
 
-        socket.on('final_partida', d => {
-            irA('finish');
-            document.getElementById('winner-box').innerHTML = `
-                <div class="capsule" style="--c:${d.ganador.color}; text-align:center; font-size:2em; display:inline-block;">
-                    ${d.ganador.nombre}<br>
-                    <b style="font-size:1.5em;">${d.ganador.puntos} PTS</b>
-                </div>`;
+        socket.on('cambio_estado', (data) => {
+            if (data.estado === "preparate") {
+                document.getElementById('status-msg').innerText = "SIGUIENTE CANCIÓN...";
+                document.getElementById('info-res').classList.add('hidden');
+            }
         });
     </script>
 </body>
-
 </html>
+
