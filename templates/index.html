@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIBE Nexus V14.0</title>
+    <style>
+        :root { --p-color: #00ffcc; --bg: #050505; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; overflow-x: hidden; }
+        .panel { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; }
+        .hidden { display: none !important; }
+        .btn-main { width: 100%; max-width: 320px; padding: 22px; background: var(--p-color); border: none; border-radius: 50px; color: black; font-weight: 900; font-size: 1.2em; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 20px var(--p-color); margin: 10px 0; }
+        #ranking-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 20px; }
+        .mini-card { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 10px; border-top: 3px solid var(--c); font-size: 0.65em; }
+        .img-res-movil { width: 220px; height: 220px; border-radius: 20px; border: 3px solid var(--p-color); object-fit: cover; }
+    </style>
+</head>
+<body>
+    <div id="view-start" class="panel">
+        <h1 style="font-size: 3.5em; letter-spacing: 8px;">VIBE</h1>
+        <button class="btn-main" onclick="location.href='/clasico'">MODO MESA</button>
+        <button class="btn-main" style="background:white;" onclick="irA('proyeccion')">MULTIJUGADOR</button>
+    </div>
+
+    <div id="view-proyeccion" class="panel hidden">
+        <h2>¿DÓNDE VER EL JUEGO?</h2>
+        <button class="btn-main" onclick="location.href='/host'">EN ESTE MÓVIL</button>
+        <button class="btn-main" style="background:#ff00ff; color:white;" onclick="irA('ip-info')">OTRA PANTALLA (TV/PC)</button>
+    </div>
+
+    <div id="view-ip-info" class="panel hidden">
+        <p>Escribe esto en tu TV:</p>
+        <h1 style="color:var(--p-color); font-size: 1.4em;">http://{{ ip }}:5000/host</h1>
+        <button class="btn-main" onclick="irA('login')">LISTO, REGISTRARSE</button>
+    </div>
+
+    <div id="view-login" class="panel hidden">
+        <h1>TU NOMBRE</h1>
+        <input type="text" id="input-nombre" placeholder="..." style="width:80%; padding:15px; border-radius:15px; background:#111; color:white; border:none; text-align:center; font-size:1.5em; margin-bottom:20px;">
+        <button class="btn-main" onclick="unirse()">ENTRAR AL LOBBY</button>
+    </div>
+
+    <div id="view-play" class="panel hidden">
+        <div id="ranking-grid"></div>
+        <button id="btn-lose" class="btn-main" disabled style="opacity:0.2;" onclick="socket.emit('lo_se')">ESPERANDO...</button>
+    </div>
+
+    <div id="view-feedback" class="panel hidden">
+        <img id="img-movil" class="img-res-movil">
+        <h2 id="art-movil" style="margin:5px 0;"></h2>
+        <p id="tit-movil" style="opacity:0.7;"></p>
+        <h3 id="anyo-movil" style="color:var(--p-color);"></h3>
+        <div id="puntos-box" class="hidden"><h1 id="p-ronda"></h1><p id="p-total"></p></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        // Capturamos la variable de Python para saber si viene del QR
+        const saltarIntro = {{ auto_login|tojson }}; 
+
+        function irA(v) { 
+            document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden')); 
+            document.getElementById('view-'+v).classList.remove('hidden'); 
+        }
+
+        function unirse() {
+            // CORRECCIÓN 1: Usar el ID correcto del input
+            const n = document.getElementById('input-nombre').value.trim();
+            if(n) { 
+                socket.emit('join', {nombre: n}); 
+                // CORRECCIÓN 2: No redirigir a URL, sino cambiar a la vista de juego aquí mismo
+                irA('play');
+            }
+        }
+
+        // Lógica automática al cargar
+        window.onload = function() {
+            if (saltarIntro) {
+                // Si entra por QR (/unirse), va directo al Login
+                irA('login');
+            } else {
+                // Si entra normal (/), por defecto se ve 'view-start' (que no tiene clase hidden)
+            }
+        };
+
+        // --- Eventos del Socket (Manteniendo tu lógica original) ---
+        socket.on('player_config', d => document.documentElement.style.setProperty('--p-color', d.color));
+        
+        socket.on('update_players', js => {
+            document.getElementById('ranking-grid').innerHTML = Object.values(js).map(j=>`<div class="mini-card" style="--c:${j.color}"><div>${j.nombre}</div><b>${j.puntos} 👑${j.coronas}</b></div>`).join('');
+        });
+        
+        socket.on('activar_boton_vibe', () => { 
+            const b=document.getElementById('btn-lose'); 
+            b.disabled=false; b.style.opacity="1"; b.innerText="¡LO SÉ!"; 
+            // Aseguramos que si estábamos viendo el resultado anterior, volvamos al botón
+            irA('play');
+        });
+
+        socket.on('jugador_lo_sabe', d => {
+             const b = document.getElementById('btn-lose');
+             b.disabled = true; b.style.opacity="0.2"; b.innerText = d.nombre + " LO SABE";
+        });
+        
+        socket.on('mostrar_info_movil', d => {
+            irA('feedback');
+            document.getElementById('img-movil').src = d.portada;
+            document.getElementById('art-movil').innerText = d.artista;
+            document.getElementById('tit-movil').innerText = d.cancion;
+            document.getElementById('anyo-movil').innerText = d.anyo || "N/A";
+            document.getElementById('puntos-box').classList.add('hidden');
+        });
+        
+        socket.on('animar_puntuacion', d => {
+            document.getElementById('puntos-box').classList.remove('hidden');
+            document.getElementById('p-ronda').innerText = d.es_corona ? "👑 PLENO" : (d.puntos_ronda > 0 ? "+" + d.puntos_ronda : d.puntos_ronda);
+            document.getElementById('p-total').innerText = "TOTAL: " + d.total_puntos;
+        });
+        
+        socket.on('cambio_estado', d => { 
+            if(d.estado === 'listo') {
+                irA('play'); 
+                const b = document.getElementById('btn-lose');
+                b.disabled = true; b.style.opacity="0.2"; b.innerText = "ESPERANDO...";
+            }
+        });
+    </script>
+</body>
+</html>

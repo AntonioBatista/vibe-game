@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIBE - Config Multi</title>
+    <style>
+        :root { --cyan: #00ffcc; --bg: #111; }
+        body { background: #050505; color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .box { background: var(--bg); padding: 30px; border-radius: 25px; border: 1px solid #222; width: 90%; max-width: 400px; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .btn-era { background: #222; color: white; border: 2px solid #333; padding: 10px; border-radius: 10px; cursor: pointer; }
+        .btn-era.active { border-color: var(--cyan); background: rgba(0, 255, 204, 0.2); }
+        .btn-confirm { background: var(--cyan); color: black; padding: 20px; border-radius: 50px; width: 100%; border: none; font-weight: 900; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>CONFIGURAR MULTI</h2>
+        <div class="grid">
+            <button class="btn-era active" onclick="this.classList.toggle('active')">60s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">70s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">80s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">90s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">00s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">10s</button>
+        </div>
+        <button class="btn-confirm" onclick="enviarConfig()">CONFIRMAR</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function enviarConfig() {
+            const eras = Array.from(document.querySelectorAll('.btn-era.active')).map(b => b.innerText);
+            socket.emit('pre_configurar', { decadas: eras, num_canciones: 15 });
+            location.href = '/multi-choice';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIBE Nexus V22 - Clasico Final</title>
+    <style>
+        :root { --nexo-cyan: #00ffcc; --nexo-bg: #050505; }
+        body { background: var(--nexo-bg); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .panel { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; }
+        .hidden { display: none !important; }
+        .btn-main { background: var(--nexo-cyan); color: black; padding: 20px; border-radius: 50px; font-weight: 900; border: none; margin: 10px; width: 100%; max-width: 320px; text-transform: uppercase; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 15px var(--nexo-cyan); }
+        .config-box { background: #111; padding: 25px; border-radius: 25px; border: 1px solid #222; width: 100%; max-width: 350px; margin-top: auto; margin-bottom: auto; }
+        #eras-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .btn-era { background: #222; color: white; border: 2px solid #333; padding: 12px 5px; border-radius: 12px; font-size: 0.85em; cursor: pointer; }
+        .btn-era.active { border-color: var(--nexo-cyan); background: rgba(0, 255, 204, 0.2); }
+        #disco-clasico { width: 220px; height: 220px; border-radius: 50%; border: 6px solid #111; filter: blur(35px); transition: 0.6s; margin: 20px; overflow: hidden; position: relative; flex-shrink: 0; }
+        .img-clasica { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+        .spinning { animation: rotate 12s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .loader-frame { width: 100%; max-width: 300px; border: 1px solid #333; border-radius: 10px; overflow: hidden; margin-top: 20px; }
+        #load-bar { height: 12px; background: var(--nexo-cyan); width: 0%; transition: 0.3s; }
+        #datos-revelados { width: 100%; max-width: 350px; margin: 10px 0; }
+        #datos-revelados h1 { color: var(--nexo-cyan); margin: 5px 0; font-size: 1.6em; word-wrap: break-word; }
+        #datos-revelados h2 { opacity: 0.8; margin: 0; font-size: 1.1em; font-weight: 300; word-wrap: break-word; }
+        #datos-revelados h3 { color: var(--nexo-cyan); font-weight: bold; margin-top: 5px; font-size: 1.3em; }
+    </style>
+</head>
+<body>
+    <audio id="audio-player"></audio>
+    <audio id="audio-buzzer" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
+
+    <div id="view-start" class="panel">
+        <div style="margin: auto;">
+            <h1 style="font-size:3.5em; letter-spacing:8px;">VIBE</h1>
+            <button class="btn-main" onclick="irAConfig()">EMPEZAR MESA</button>
+            <button class="btn-main" style="background: #333; color: white; transform: scale(0.8);" onclick="window.location.href='/'">VOLVER AL MENÚ</button>
+        </div>
+    </div>
+
+    <div id="view-config" class="panel hidden">
+    <div class="config-box">
+        <h2>DÉCADAS</h2>
+        <div id="eras-grid">
+            <button class="btn-era active" onclick="this.classList.toggle('active')">60s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">70s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">80s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">90s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">00s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">10s</button>
+            <button class="btn-era active" onclick="this.classList.toggle('active')">20s</button>
+        </div>
+        <label>CANCIONES: <b id="val-num" style="color:var(--nexo-cyan)">10</b></label>
+        <input type="range" id="slider-songs" min="5" max="30" value="10" oninput="document.getElementById('val-num').innerText=this.value" style="width:100%; margin:20px 0;">
+        <button class="btn-main" onclick="confirmarConfig()">CONFIRMAR</button>
+    </div>
+</div>
+
+    <div id="view-loading" class="panel hidden">
+        <div style="margin: auto;">
+            <h2>PREPARANDO VIBE...</h2>
+            <div class="loader-frame"><div id="load-bar"></div></div>
+            <p id="load-text" style="margin-top:10px; font-family:monospace;"></p>
+        </div>
+    </div>
+
+    <div id="view-game" class="panel hidden">
+        <div id="track-count" style="font-weight:bold; color:var(--nexo-cyan); margin-top: 10px;"></div>
+        <p id="txt-instruccion" style="margin: 10px 0;">PON EL MÓVIL BOCA ABAJO</p>
+        <div id="disco-clasico"><img id="img-clasica" class="img-clasica"></div>
+        <div id="datos-revelados" class="hidden">
+            <h1 id="res-artista"></h1>
+            <h2 id="res-titulo"></h2>
+            <h3 id="res-anio"></h3>
+        </div>
+        <h1 id="timer-clasico" style="font-size:5em; margin:0; flex-shrink: 0;"></h1>
+        <button id="btn-revelar" class="btn-main hidden" onclick="revelar()">REVELAR</button>
+        <button id="btn-next" class="btn-main hidden" onclick="pedirSiguiente()">SIGUIENTE</button>
+    </div>
+
+    <div id="view-finish" class="panel hidden">
+        <div style="margin: auto;">
+            <h1 style="font-size:3em; color:var(--nexo-cyan);">¡FIN DE PARTIDA!</h1>
+            <button class="btn-main" onclick="location.reload()">INICIO</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const player = document.getElementById('audio-player');
+        const buzzer = document.getElementById('audio-buzzer');
+        let estaBocaAbajo = false, cancionLista = false, totalPartida = 10;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTick(freq = 440, vol = 0.8) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function irAConfig() {
+            document.getElementById('view-start').classList.add('hidden');
+            document.getElementById('view-config').classList.remove('hidden');
+        }
+
+        async function confirmarConfig() {
+            totalPartida = parseInt(document.getElementById('slider-songs').value);
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            player.load(); buzzer.load();
+
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                const res = await DeviceOrientationEvent.requestPermission();
+                if (res === 'granted') window.addEventListener('deviceorientation', manejarGiro, true);
+            } else {
+                window.addEventListener('deviceorientation', manejarGiro, true);
+            }
+            
+            const eras = Array.from(document.querySelectorAll('.btn-era.active')).map(b => b.innerText);
+            socket.emit('pre_configurar', { decadas: eras, num_canciones: totalPartida });
+        }
+
+        function manejarGiro(e) {
+            if(!cancionLista) return;
+            let beta = e.beta;
+            if (Math.abs(beta) > 165 && !estaBocaAbajo) {
+                estaBocaAbajo = true; player.play();
+                document.getElementById('disco-clasico').classList.add('spinning');
+                document.getElementById('txt-instruccion').innerText = "SONANDO...";
+            } else if (Math.abs(beta) < 90 && estaBocaAbajo) {
+                estaBocaAbajo = false; player.pause(); playTick(800, 0.5);
+                document.getElementById('disco-clasico').classList.remove('spinning');
+                iniciarCuentaAtras();
+            }
+        }
+
+        function iniciarCuentaAtras() {
+            let t = 10;
+            document.getElementById('btn-revelar').classList.remove('hidden');
+            document.getElementById('txt-instruccion').innerText = "¡ADIVINA!";
+            clearInterval(window.timerInt);
+            window.timerInt = setInterval(() => {
+                document.getElementById('timer-clasico').innerText = t;
+                if(t >= 0) playTick(440, 0.6);
+                if (t <= 5 && t > 3) setTimeout(() => playTick(440, 0.4), 500);
+                else if (t <= 3 && t > 0) {
+                    setTimeout(() => playTick(550, 0.4), 250);
+                    setTimeout(() => playTick(550, 0.4), 500);
+                    setTimeout(() => playTick(550, 0.4), 750);
+                }
+                t--;
+                if(t < 0) { clearInterval(window.timerInt); playTick(220, 0.8); }
+            }, 1000);
+        }
+
+        function revelar() {
+            clearInterval(window.timerInt);
+            document.getElementById('disco-clasico').style.filter = "none";
+            document.getElementById('datos-revelados').classList.remove('hidden');
+            document.getElementById('btn-revelar').classList.add('hidden');
+            document.getElementById('btn-next').classList.remove('hidden');
+            document.getElementById('timer-clasico').innerText = "";
+            player.play();
+            document.getElementById('disco-clasico').classList.add('spinning');
+        }
+
+        function pedirSiguiente() {
+            cancionLista = false; estaBocaAbajo = false;
+            player.pause(); player.currentTime = 0;
+            socket.emit('nueva_ronda');
+            document.getElementById('disco-clasico').style.filter = "blur(35px)";
+            document.getElementById('datos-revelados').classList.add('hidden');
+            document.getElementById('btn-next').classList.add('hidden');
+            document.getElementById('txt-instruccion').innerText = "ESPERANDO...";
+        }
+
+        socket.on('inicio_carga_masiva', () => {
+            document.getElementById('view-config').classList.add('hidden');
+            document.getElementById('view-loading').classList.remove('hidden');
+        });
+
+        socket.on('progreso_carga', d => {
+            document.getElementById('load-bar').style.width = (d.count / d.total * 100) + '%';
+            document.getElementById('load-text').innerText = `${d.count} / ${d.total}`;
+        });
+
+        socket.on('play_song', d => {
+            document.getElementById('view-loading').classList.add('hidden');
+            document.getElementById('view-game').classList.remove('hidden');
+            
+            player.src = d.preview; 
+            player.load(); // PRECARGA FORZADA
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            player.pause(); 
+            player.currentTime = 0;
+            
+            document.getElementById('img-clasica').src = d.datos.portada;
+            document.getElementById('res-artista').innerText = d.datos.artista;
+            document.getElementById('res-titulo').innerText = d.datos.cancion;
+            document.getElementById('res-anio').innerText = d.datos.anyo || "----";
+            document.getElementById('track-count').innerText = `CANCION: ${totalPartida - d.quedan} / ${totalPartida}`;
+            document.getElementById('txt-instruccion').innerText = "PON EL MÓVIL BOCA ABAJO";
+            
+            setTimeout(() => { cancionLista = true; }, 500); 
+        });
+
+        socket.on('final_partida', () => {
+            document.getElementById('view-game').classList.add('hidden');
+            document.getElementById('view-finish').classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>

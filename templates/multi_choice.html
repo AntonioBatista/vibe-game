@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>VIBE - Host Pro</title>
+    <style>
+        :root { --cyan: #00ffcc; --bg: #050505; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; overflow: hidden; margin: 0; }
+        .panel { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .hidden { display: none !important; }
+        #disco-rotador { width: 350px; height: 350px; border-radius: 50%; border: 8px solid #111; filter: blur(35px); transition: 0.8s; }
+        .spinning { animation: rotate 12s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #flash-lo-se { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,255,204,0.9); z-index: 5000; color: black; }
+        .sidebar { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; }
+        .capsule { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; border-left: 6px solid var(--c); text-align: right; min-width: 180px; }
+    </style>
+</head>
+<body>
+    <audio id="audio-player"></audio>
+    <audio id="audio-buzzer" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
+
+    <div id="flash-lo-se" class="hidden">
+        <h1 id="txt-nombre" style="font-size: 6em; margin: 0;"></h1>
+        <div id="timer-host" style="font-size: 12em; font-weight: 900;">10</div>
+    </div>
+
+    <div id="sidebar" class="sidebar"></div>
+
+    <div id="view-lobby" class="panel">
+        <h1 style="font-size: 6em; letter-spacing: 15px; color: var(--cyan);">VIBE</h1>
+        <div style="background:white; padding:20px; border-radius:20px; margin: 30px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=http://{{ ip }}:5000/multi-player" width="250">
+        </div>
+        <div id="players-list" style="display:flex; gap:20px; font-size: 1.5em;"></div>
+        <button id="btn-start" class="hidden" onclick="socket.emit('iniciar_partida', {continuar: true})" style="margin-top:40px; padding:20px 60px; border-radius:50px; border:none; background:var(--cyan); font-weight:900; cursor:pointer; font-size: 1.2em;">INICIAR PARTIDA</button>
+    </div>
+
+    <div id="view-game" class="panel hidden">
+        <div id="disco-rotador"><img id="img-host" style="width:100%; height:100%; object-fit:cover; opacity:0.6;"></div>
+        <div id="solucion" class="hidden" style="margin-top:30px; text-align:center;">
+            <h1 id="h-artista" style="color:var(--cyan); font-size:4em; margin:0;"></h1>
+            <h2 id="h-titulo" style="font-size:2em; font-weight:300;"></h2>
+            <button onclick="socket.emit('nueva_ronda')" style="margin-top:20px; padding:15px 40px; background:var(--cyan); border:none; border-radius:30px; font-weight:bold; cursor:pointer;">SIGUIENTE</button>
+        </div>
+        <button id="btn-revelar-host" onclick="revelarHost()" style="margin-top:40px; background:none; border:2px solid var(--cyan); color:var(--cyan); padding:15px 40px; border-radius:30px; font-weight:bold; cursor:pointer;">REVELAR SOLUCIÓN</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function tick(f=440) {
+            const o = ctx.createOscillator(); const g = ctx.createGain();
+            o.type='square'; o.connect(g); g.connect(ctx.destination);
+            o.frequency.value=f; g.gain.setValueAtTime(0.5, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+0.1);
+            o.start(); o.stop(ctx.currentTime+0.1);
+        }
+
+        socket.on('update_players', js => {
+            const lista = Object.values(js);
+            document.getElementById('players-list').innerHTML = lista.map(j => `<div style="color:${j.color}; font-weight:bold;">${j.nombre}</div>`).join('');
+            document.getElementById('sidebar').innerHTML = lista.sort((a,b)=>b.puntos-a.puntos).map(j => `<div class="capsule" style="--c:${j.color}">${j.nombre} <br> <b>${j.puntos} PTS</b></div>`).join('');
+            if(lista.length > 0) document.getElementById('btn-start').classList.remove('hidden');
+        });
+
+        socket.on('play_song', d => {
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-game').classList.remove('hidden');
+            document.getElementById('disco-rotador').style.filter = "blur(35px)";
+            document.getElementById('img-host').src = d.datos.portada;
+            document.getElementById('h-artista').innerText = d.datos.artista;
+            document.getElementById('h-titulo').innerText = d.datos.cancion;
+            const p = document.getElementById('audio-player'); p.src = d.preview; p.play();
+            document.getElementById('disco-rotador').classList.add('spinning');
+            document.getElementById('solucion').classList.add('hidden');
+            document.getElementById('btn-revelar-host').classList.remove('hidden');
+            socket.emit('musica_on');
+        });
+
+        socket.on('jugador_lo_sabe', d => {
+            document.getElementById('audio-player').pause();
+            document.getElementById('audio-buzzer').play();
+            document.getElementById('flash-lo-se').classList.remove('hidden');
+            document.getElementById('txt-nombre').innerText = d.nombre;
+            let t = 10;
+            const timer = setInterval(() => {
+                document.getElementById('timer-host').innerText = t;
+                tick(t <= 3 ? 600 : 440);
+                t--; if(t<0) { clearInterval(timer); tick(200); }
+            }, 1000);
+            window.hTimer = timer;
+        });
+
+        function revelarHost() {
+            clearInterval(window.hTimer);
+            document.getElementById('flash-lo-se').classList.add('hidden');
+            document.getElementById('disco-rotador').style.filter = "none";
+            document.getElementById('solucion').classList.remove('hidden');
+            document.getElementById('btn-revelar-host').classList.add('hidden');
+            socket.emit('revelar_solucion');
+        }
+    </script>
+</body>
+</html>

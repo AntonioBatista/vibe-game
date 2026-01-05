@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cargando</title>
+<style>
+body { background:#111; color:white; font-family:Arial; text-align:center; }
+.bar { width:100%; background:#333; border-radius:20px; margin:20px 0; overflow:hidden; }
+.progress { height:24px; background:#4CAF50; width:100%; }
+</style>
+</head>
+<body>
+<h2>🎧 Preparando la partida</h2>
+<p>{{ canciones|length }} canciones listas</p>
+<div class="bar"><div class="progress"></div></div>
+<script>
+setTimeout(() => {
+    const datos = {{ canciones | tojson }};
+    localStorage.setItem("canciones", JSON.stringify(datos));
+    window.location.href = "/juego";
+}, 1500);
+</script>
+</body>
+</html>
