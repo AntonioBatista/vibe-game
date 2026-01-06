@@ -2,70 +2,123 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>VIBE Host - Premium Gold v1.0</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIBE Nexus Gold</title>
     <style>
-        :root { --cyan: #00ffcc; --bg: #050505; --f-rgb: 0, 255, 204; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
-        .panel { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 40px 20px; box-sizing: border-box; text-align: center; }
+        :root { --p-color: #00ffcc; --bg: #050505; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; overflow-x: hidden; }
+        .panel { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; }
         .hidden { display: none !important; }
-        #disco-box { width: 380px; height: 380px; border-radius: 50%; border: 10px solid #111; overflow: hidden; filter: blur(50px); transition: 0.8s; position: relative; flex-shrink: 0; margin-top: 20px; }
-        .img-host { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
-        .spinning { animation: rotate 12s linear infinite; }
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .btn-play-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 85px; height: 85px; background: var(--cyan); border-radius: 50%; border: none; z-index: 1000; cursor: pointer; box-shadow: 0 0 30px var(--cyan); display: flex; align-items: center; justify-content: center; }
-        #flash-total { position: fixed; inset: 0; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; transition: 0.3s; }
-        .flash-active { background: rgba(var(--f-rgb), 0.85); backdrop-filter: blur(25px); color: black; }
-        #panel-validacion { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 6000; background: rgba(0,0,0,0.9); padding: 20px 40px; border-radius: 50px; border: 2px solid var(--cyan); text-align: center; pointer-events: auto; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
-        .score-sidebar { position: fixed; right: 25px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 2000; }
-        .capsule { background: rgba(255,255,255,0.05); padding: 12px 20px; border-radius: 50px 15px 15px 50px; border-left: 6px solid var(--c); min-width: 220px; backdrop-filter: blur(5px); display: flex; justify-content: space-between; align-items: center; gap: 15px; font-weight: 600; text-transform: uppercase; }
-        .capsule b { color: var(--cyan); }
-        .btn-host { background: var(--cyan); color: black; padding: 16px 45px; border-radius: 50px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; margin: 10px; transition: 0.2s; }
+        .btn-main { width: 100%; max-width: 320px; padding: 22px; background: var(--p-color); border: none; border-radius: 50px; color: black; font-weight: 900; font-size: 1.2em; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 20px var(--p-color); margin: 10px 0; }
+        #ranking-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 20px; }
+        .mini-card { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 10px; border-top: 3px solid var(--c); font-size: 0.65em; }
+        .img-res-movil { width: 220px; height: 220px; border-radius: 20px; border: 3px solid var(--p-color); object-fit: cover; }
     </style>
 </head>
 <body>
-    <audio id="audio-player"></audio>
-    <audio id="audio-buzzer" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
-
-    <div id="view-intro" class="panel">
-        <div style="margin: auto;">
-            <h1 style="font-size: 5em; color: var(--cyan); letter-spacing: 10px;">VIBE</h1>
-            <div style="background:white; padding:15px; border-radius:20px; margin: 20px; display: inline-block; box-shadow: 0 0 30px rgba(0,255,204,0.4);">
-                <img id="qr-img" src="" width="220">
-            </div>
-            <p style="font-size: 1.5em; color: var(--cyan); font-family: monospace; letter-spacing: 2px;">
-                <span id="url-display">CARGANDO URL...</span>
-            </p>
-            <div id="players-list" style="display:flex; justify-content: center; gap:15px; font-weight: bold; margin-top:20px;"></div>
-            <button id="btn-to-config" class="hidden btn-host" onclick="irA('config')" style="margin-top:30px;">CONFIGURAR PARTIDA</button>
-        </div>
+    <div id="view-start" class="panel">
+        <h1 style="font-size: 3.5em; letter-spacing: 8px;">VIBE</h1>
+        <button class="btn-main" onclick="location.href='/clasico'">MODO MESA</button>
+        <button class="btn-main" style="background:white;" onclick="irA('proyeccion')">MULTIJUGADOR</button>
     </div>
 
-    <div id="sidebar" class="score-sidebar"></div>
+    <div id="view-proyeccion" class="panel hidden">
+        <h2>¿DÓNDE VER EL JUEGO?</h2>
+        <button class="btn-main" onclick="location.href='/host'">EN ESTE MÓVIL</button>
+        <button class="btn-main" style="background:#ff00ff; color:white;" onclick="irA('ip-info')">OTRA PANTALLA (TV/PC)</button>
+    </div>
+
+    <div id="view-ip-info" class="panel hidden">
+        <p>Escribe esto en tu TV:</p>
+        <h1 id="tv-url-display" style="color:var(--p-color); font-size: 1.2em; word-break: break-all;"></h1>
+        <button class="btn-main" onclick="irA('login')">LISTO, REGISTRARSE</button>
+    </div>
+
+    <div id="view-login" class="panel hidden">
+        <h1>TU NOMBRE</h1>
+        <input type="text" id="input-nombre" placeholder="..." style="width:80%; padding:15px; border-radius:15px; background:#111; color:white; border:none; text-align:center; font-size:1.5em; margin-bottom:20px;">
+        <button class="btn-main" onclick="unirse()">ENTRAR AL LOBBY</button>
+    </div>
+
+    <div id="view-play" class="panel hidden">
+        <div id="ranking-grid"></div>
+        <button id="btn-lose" class="btn-main" disabled style="opacity:0.2;" onclick="socket.emit('lo_se')">ESPERANDO...</button>
+    </div>
+
+    <div id="view-feedback" class="panel hidden">
+        <img id="img-movil" class="img-res-movil">
+        <h2 id="art-movil" style="margin:5px 0;"></h2>
+        <p id="tit-movil" style="opacity:0.7;"></p>
+        <h3 id="anyo-movil" style="color:var(--p-color);"></h3>
+        <div id="puntos-box" class="hidden"><h1 id="p-ronda"></h1><p id="p-total"></p></div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
         const socket = io();
-        const player = document.getElementById('audio-player');
-        
-        // RECIBIMOS EL DOMINIO LIMPIO DESDE PYTHON
-        const rawDomain = "{{ ip }}"; 
+        const saltarIntro = {{ auto_login|tojson }};
+        const rawIp = "{{ ip }}";
 
-        // FORZAMOS HTTPS Y SIN PUERTO PARA RENDER
-        const fullUrl = "https://" + rawDomain + "/unirse";
-        const displayUrl = "HTTPS://" + rawDomain.toUpperCase() + "/HOST";
-
-        // Asignamos el QR y el texto de ayuda
-        document.getElementById('qr-img').src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(fullUrl);
-        document.getElementById('url-display').innerText = displayUrl;
+        // CONSTRUCCIÓN DEFINITIVA DE LA URL PARA TV
+        const finalUrl = "https://" + rawIp + "/host";
+        document.getElementById('tv-url-display').innerText = finalUrl.toUpperCase();
 
         function irA(v) { 
-            document.querySelectorAll('.panel').forEach(p=>p.classList.add('hidden')); 
+            document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden')); 
             document.getElementById('view-'+v).classList.remove('hidden'); 
         }
 
-        // Mantenemos tus funciones de juego (lanzarCarga, voto, revelar, togglePlay, etc.)
-        // Asegúrate de incluir el botón 'Nueva Partida' que use 'reset_total' como definimos.
+        function unirse() {
+            const n = document.getElementById('input-nombre').value.trim();
+            if(n) { 
+                socket.emit('join', {nombre: n}); 
+                irA('play');
+            }
+        }
+
+        window.onload = function() {
+            if (saltarIntro) irA('login');
+        };
+
+        socket.on('player_config', d => document.documentElement.style.setProperty('--p-color', d.color));
+        
+        socket.on('update_players', js => {
+            document.getElementById('ranking-grid').innerHTML = Object.values(js).map(j=>`<div class="mini-card" style="--c:${j.color}"><div>${j.nombre}</div><b>${j.puntos} 👑${j.coronas}</b></div>`).join('');
+        });
+        
+        socket.on('activar_boton_vibe', () => { 
+            const b=document.getElementById('btn-lose'); 
+            b.disabled=false; b.style.opacity="1"; b.innerText="¡LO SÉ!"; 
+            irA('play');
+        });
+
+        socket.on('jugador_lo_sabe', d => {
+             const b = document.getElementById('btn-lose');
+             b.disabled = true; b.style.opacity="0.2"; b.innerText = d.nombre + " LO SABE";
+        });
+        
+        socket.on('mostrar_info_movil', d => {
+            irA('feedback');
+            document.getElementById('img-movil').src = d.portada;
+            document.getElementById('art-movil').innerText = d.artista;
+            document.getElementById('tit-movil').innerText = d.cancion;
+            document.getElementById('anyo-movil').innerText = d.anyo || "N/A";
+            document.getElementById('puntos-box').classList.add('hidden');
+        });
+        
+        socket.on('animar_puntuacion', d => {
+            document.getElementById('puntos-box').classList.remove('hidden');
+            document.getElementById('p-ronda').innerText = d.es_corona ? "👑 PLENO" : (d.puntos_ronda > 0 ? "+" + d.puntos_ronda : d.puntos_ronda);
+            document.getElementById('p-total').innerText = "TOTAL: " + d.total_puntos;
+        });
+        
+        socket.on('cambio_estado', d => { 
+            if(d.estado === 'listo') {
+                irA('play'); 
+                const b = document.getElementById('btn-lose');
+                b.disabled = true; b.style.opacity="0.2"; b.innerText = "ESPERANDO...";
+            }
+        });
     </script>
 </body>
 </html>
