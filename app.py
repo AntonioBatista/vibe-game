@@ -10,31 +10,29 @@ from buscador import BuscadorVibe
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vibe_gold_nexus_2026'
-# Optimización para evitar desconexiones en la nube
+# Configuración para evitar desconexiones en Render
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 buscador = BuscadorVibe()
 
 COLORES_JUGADORES = ["#00ffcc", "#ff00ff", "#ffff00", "#ff3300", "#0066ff", "#99ff00", "#cc00ff"]
 
 def get_render_url():
-    """Obtiene el dominio limpio de Render sin puertos adicionales"""
-    # Esta es la URL que verán los usuarios (ej: vibe-game-i71y.onrender.com)
+    # Obtiene la URL de Render (vibe-game-i71y.onrender.com) sin puertos
     return os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'vibe-game-i71y.onrender.com')
 
-# Estado global del juego (Memorizado como VIBE-GAME v1.0 PREMIUM)
+# Estado global del juego
 juego = {
     "jugadores": {},
     "config": {"modo": "Multijugador", "decadas": [], "solo_espanol": False, "num_canciones": 10},
     "lista_partida": [],
     "indice_actual": 0,
-    "server_url": get_render_url(), # URL LIMPIA PARA PANTALLAS
+    "server_url": get_render_url(), 
     "quien_lo_sabe": "BLOQUEADO"
 }
 
 def emitir_jugadores():
     socketio.emit('update_players', juego["jugadores"])
 
-# --- RUTAS ---
 @app.route('/')
 def index():
     return render_template('index.html', ip=juego["server_url"], auto_login=False)
@@ -51,29 +49,22 @@ def host():
 def clasico():
     return render_template('clasico.html')
 
-# --- EVENTOS SOCKET.IO ---
 @socketio.on('join')
 def on_join(data):
     sid = request.sid
     nombre = data.get('nombre', 'Invitado').upper()
     user_ip = request.remote_addr 
-    
     encontrado_sid = None
     for s, info in juego["jugadores"].items():
         if info.get('ip') == user_ip:
             encontrado_sid = s
             break
-    
     if encontrado_sid:
         juego["jugadores"][sid] = juego["jugadores"].pop(encontrado_sid)
         juego["jugadores"][sid]["nombre"] = nombre
     else:
         color = COLORES_JUGADORES[len(juego["jugadores"]) % len(COLORES_JUGADORES)]
-        juego["jugadores"][sid] = {
-            "nombre": nombre, "puntos": 0, "coronas": 0, 
-            "color": color, "ip": user_ip
-        }
-    
+        juego["jugadores"][sid] = {"nombre": nombre, "puntos": 0, "coronas": 0, "color": color, "ip": user_ip}
     emit('player_config', {"color": juego["jugadores"][sid]["color"]}, room=sid)
     emitir_jugadores()
     socketio.emit('desbloquear_config')
@@ -183,6 +174,6 @@ def reset_total():
     emitir_jugadores()
 
 if __name__ == '__main__':
-    # Render usa esta variable PORT internamente para conectar con Internet
+    # El puerto interno es 5000, pero la URL externa de Render no lo usa
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
