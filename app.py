@@ -53,19 +53,29 @@ def clasico():
 def on_join(data):
     sid = request.sid
     nombre = data.get('nombre', 'Invitado').upper()
-    user_ip = request.remote_addr 
-    encontrado_sid = None
-    for s, info in juego["jugadores"].items():
-        if info.get('ip') == user_ip:
-            encontrado_sid = s
-            break
-    if encontrado_sid:
-        juego["jugadores"][sid] = juego["jugadores"].pop(encontrado_sid)
-        juego["jugadores"][sid]["nombre"] = nombre
-    else:
+    
+    # Eliminamos el bloqueo por IP que causaba el borrado de jugadores en Render
+    # Cada nueva conexión se trata como un jugador único basado en su Session ID (sid)
+    
+    if sid not in juego["jugadores"]:
+        # Asignar color según el orden de llegada
         color = COLORES_JUGADORES[len(juego["jugadores"]) % len(COLORES_JUGADORES)]
-        juego["jugadores"][sid] = {"nombre": nombre, "puntos": 0, "coronas": 0, "color": color, "ip": user_ip}
+        juego["jugadores"][sid] = {
+            "nombre": nombre, 
+            "puntos": 0, 
+            "coronas": 0, 
+            "color": color
+        }
+    else:
+        # Si por algún motivo ya existe (reconexión rápida), solo actualizamos el nombre
+        juego["jugadores"][sid]["nombre"] = nombre
+    
+    print(f"[CONEXIÓN] {nombre} unido con ID: {sid}")
+    
+    # Enviamos su configuración personal
     emit('player_config', {"color": juego["jugadores"][sid]["color"]}, room=sid)
+    
+    # Actualizamos a todos los demás (incluyendo la pantalla Host)
     emitir_jugadores()
     socketio.emit('desbloquear_config')
 
