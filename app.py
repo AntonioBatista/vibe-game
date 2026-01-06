@@ -175,5 +175,5 @@ def reset_total():
 
 if __name__ == '__main__':
     # El puerto interno es 5000, pero la URL externa de Render no lo usa
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT'))
     socketio.run(app, host='0.0.0.0', port=port)
